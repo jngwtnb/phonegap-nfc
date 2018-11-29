@@ -90,6 +90,8 @@ public class NfcPlugin extends CordovaPlugin implements NfcAdapter.OnNdefPushCom
     private CallbackContext shareTagCallback;
     private CallbackContext handoverCallback;
 
+    private Tag readerDiscoveredTag = null;
+
     @Override
     public boolean execute(String action, JSONArray data, CallbackContext callbackContext) throws JSONException {
 
@@ -212,6 +214,7 @@ public class NfcPlugin extends CordovaPlugin implements NfcAdapter.OnNdefPushCom
         Bundle extras = new Bundle(); // not used
         readerModeCallback = callbackContext;
         getActivity().runOnUiThread(() -> {
+            readerDiscoveredTag = null;
             NfcAdapter nfcAdapter = NfcAdapter.getDefaultAdapter(getActivity());
             nfcAdapter.enableReaderMode(getActivity(), callback, flags, extras);
         });
@@ -220,6 +223,7 @@ public class NfcPlugin extends CordovaPlugin implements NfcAdapter.OnNdefPushCom
 
     private void disableReaderMode(CallbackContext callbackContext) {
         getActivity().runOnUiThread(() -> {
+            readerDiscoveredTag = null;
             readerModeCallback = null;
             NfcAdapter nfcAdapter = NfcAdapter.getDefaultAdapter(getActivity());
             if (nfcAdapter != null) {
@@ -232,7 +236,7 @@ public class NfcPlugin extends CordovaPlugin implements NfcAdapter.OnNdefPushCom
     private NfcAdapter.ReaderCallback callback = new NfcAdapter.ReaderCallback() {
         @Override
         public void onTagDiscovered(Tag tag) {
-
+            readerDiscoveredTag = tag;
             JSONObject json;
 
             // If the tag supports Ndef, try and return an Ndef message
@@ -854,8 +858,11 @@ public class NfcPlugin extends CordovaPlugin implements NfcAdapter.OnNdefPushCom
     private void connect(final String tech, final int timeout, final CallbackContext callbackContext) {
         this.cordova.getThreadPool().execute(() -> {
             try {
+                Tag tag = readerDiscoveredTag;
+                if (tag == null) {
+                    tag = getIntent().getParcelableExtra(NfcAdapter.EXTRA_TAG);
+                }
 
-                Tag tag = getIntent().getParcelableExtra(NfcAdapter.EXTRA_TAG);
                 if (tag == null) {
                     tag = savedIntent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
                 }
